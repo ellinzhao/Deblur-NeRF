@@ -161,6 +161,8 @@ def config_parser():
                         help='downsampling factor to speed up rendering, set 4 or 8 for fast preview')
     parser.add_argument('--render_epi', action='store_true',
                         help='render the video with epi path')
+    parser.add_argument("--white_bkgd", action='store_true',
+                        help='set to render synthetic data on a white bkgd (always use for dvoxels)')
 
     ## llff flags
     parser.add_argument('--factor', type=int, default=None,
@@ -183,7 +185,6 @@ def config_parser():
                         help='frequency of testset saving')
     parser.add_argument('--i_video', type=int, default=20000,
                         help='frequency of render_poses video saving')
-
     return parser
 
 
@@ -197,32 +198,28 @@ def train():
 
     # Load data
     K = None
-    if args.dataset_type == 'llff':
-        images, poses, bds, render_poses, i_test = load_llff_data(
-            args, args.datadir, args.factor, recenter=True, bd_factor=.75,
-            spherify=args.spherify, path_epi=args.render_epi,
-        )
-        hwf = poses[0, :3, -1]
-        poses = poses[:, :3, :4]
-        print('Loaded llff', images.shape, render_poses.shape, hwf, args.datadir)
-        if not isinstance(i_test, list):
-            i_test = [i_test]
+    images, poses, bds, render_poses, i_test = load_llff_data(
+        args, args.datadir, args.factor, recenter=True, bd_factor=.75,
+        spherify=args.spherify, path_epi=args.render_epi,
+    )
+    hwf = poses[0, :3, -1]
+    poses = poses[:, :3, :4]
+    print('Loaded llff', images.shape, render_poses.shape, hwf, args.datadir)
+    if not isinstance(i_test, list):
+        i_test = [i_test]
 
-        i_test = np.arange(images.shape[0])[::args.llffhold]
-        i_val = i_test
-        i_train = np.array([
-            i for i in np.arange(int(images.shape[0])) if (i not in i_test and i not in i_val)
-        ])
+    i_test = np.arange(images.shape[0])[::args.llffhold]
+    i_val = i_test
+    i_train = np.array([
+        i for i in np.arange(int(images.shape[0])) if (i not in i_test and i not in i_val)
+    ])
 
-        if args.no_ndc:
-            near = np.min(bds) * 0.9
-            far = np.max(bds) * 1.0
-        else:
-            near = 0.
-            far = 1.
+    if args.no_ndc:
+        near = np.min(bds) * 0.9
+        far = np.max(bds) * 1.0
     else:
-        print('Unknown dataset type', args.dataset_type, 'exiting')
-        return
+        near = 0.
+        far = 1.
 
     imagesf = images
     images = (images * 255).astype(np.uint8)
@@ -558,7 +555,7 @@ def train():
             print('Saved test set')
 
         if i % args.i_print == 0:
-            print(f'[TRAIN] Iter: {i} Loss: {loss.item():.03d}  PSNR: {psnr.item():.03d}')
+            print(f'[TRAIN] Iter: {i} Loss: {loss.item():.6f}  PSNR: {psnr.item():.3f}')
 
         global_step += 1
 
