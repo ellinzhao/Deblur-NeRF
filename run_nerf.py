@@ -74,11 +74,10 @@ def config_parser():
                         help='log2 of max freq for positional encoding (2D direction)')
     parser.add_argument('--raw_noise_std', type=float, default=0.,
                         help='std dev of noise added to regularize sigma_a output, 1e0 recommended')
-
     parser.add_argument('--rgb_activate', type=str, default='sigmoid',
-                        help='activate function for rgb output, choose among 'none', 'sigmoid'')
+                        help='activate function for rgb output, choose among "none", "sigmoid"')
     parser.add_argument('--sigma_activate', type=str, default='relu',
-                        help='activate function for sigma output, choose among 'relu', 'softplue'')
+                        help='activate function for sigma output, choose among "relu", "softplus"')
 
     # ===============================
     # Kernel optimizing
@@ -342,10 +341,9 @@ def train():
     if args.render_only:
         print('RENDER ONLY')
         with torch.no_grad():
-            testsavedir = os.path.join(basedir, expname,
-                                       f'renderonly'
-                                       f'_{'test' if args.render_test else 'path'}'
-                                       f'_{start:06d}')
+            testsavedir = os.path.join(
+                basedir, expname, f'renderonly_{"test" if args.render_test else "path"}_{start:06d}',
+            )
             os.makedirs(testsavedir, exist_ok=True)
             print('test poses shape', render_poses.shape)
 
