@@ -1,9 +1,7 @@
 num_gpu = 1
-expname = defocuswine1_naive
-basedir = /apdcephfs/private_leema/data/NeRF/logs_exp
-datadir = /apdcephfs/private_leema/data/NeRF/defocuswine
-tbdir = /apdcephfs/private_leema/data/NeRF/tensorboard_exp
-dataset_type = llff
+expname = nodiffuser_naive
+basedir = /content/output
+datadir = /content/Deblur-NeRF/data/no_diffuser
 
 factor = 1
 llffhold = 8
