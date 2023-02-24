@@ -5,7 +5,6 @@
 *.npy
 *.npz
 *.dae
-data/*
 logs/*
 .DS_Store
 *MACOSX__
