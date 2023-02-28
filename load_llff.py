@@ -301,4 +301,7 @@ def load_llff_data(args, basedir, factor=8, recenter=True, bd_factor=.75, spheri
     images = images.astype(np.float32)
     poses = poses.astype(np.float32)
 
+    np.save('/content/poses_render.npy', render_poses)
+    np.save('/content/poses.npy', poses)
+
     return images, poses, bds, render_poses, i_test
