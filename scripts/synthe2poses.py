@@ -55,8 +55,8 @@ def main():
         )
         pose_arr.append(pose)
 
-        img = cv2.imread(f'{input_path}/{i+1:04d}.png')
-        cv2.imwrite(f'{out_path}/{i+1:04d}.png', img)
+        img = cv2.imread(f'{input_path}/{i:04d}.png')
+        cv2.imwrite(f'{out_path}/{i:04d}.png', img)
         print(f'Frame {i} saved!')
     
     pose_arr = np.stack(pose_arr)
