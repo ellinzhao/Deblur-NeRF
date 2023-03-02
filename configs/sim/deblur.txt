@@ -21,6 +21,11 @@ use_viewdirs = True
 raw_noise_std = 1e0
 rgb_activate = sigmoid
 
+# Params for freezing weights --------------------
+freeze_start_iter = 501
+freeze_end_iter = 700
+# ------------------------------------------------
+
 kernel_start_iter = 500
 kernel_align_weight = 0.1
 align_start_iter = 0
@@ -46,6 +51,7 @@ kernel_shortcut
 kernel_spatialvariant_trans
 tone_mapping_type = none
 
+render_factor = 8
 render_rmnearplane = 30
 render_focuspoint_scale = 1.
 render_radius_scale = 0.7
