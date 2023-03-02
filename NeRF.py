@@ -109,7 +109,7 @@ class DSKnet(nn.Module):
         else:
             self.img_embed = None
 
-    def forward(self, H, W, K, rays, rays_info):
+    def forward(self, H, W, K, rays, rays_info, diffuser_info):
         """
         inputs: all input has shape (ray_num, cnl)
         outputs: output shape (ray_num, ptnum, 3, 2)  last two dim: [ray_o, ray_d]
@@ -176,6 +176,22 @@ class DSKnet(nn.Module):
             raise NotImplementedError(f"{self.random_mode} for self.random_mode is not implemented")
 
         poses = self.poses[img_idx]
+
+        # DiffuserNeRF changes
+        # --------------------------------------------------------------------------------------
+        # Origins and directions of undeformed rays (world coords).
+        rays_o = poses[:, :3, 3]
+        
+        dirs = torch.stack([rays_x, rays_y, -torch.ones_like(rays_x)], -1)
+        rays_d = torch.sum(dirs[..., None, :] * poses[..., None, :3, :3], -1)
+
+        n, p0 = diffuser_info['n'][:3], diffuser_info['p0'][:3]
+        t_intersect = torch.sum((p0 - rays_o)*n, -1)[..., None] / torch.sum(rays_d*n, -1)
+        # t_intersect = (diffuser_loc - rays_o[..., diffuser_axis, None]) / rays_d[..., diffuser_axis]
+        # rays_q are the intersects of undeformed rays + diffuser (world coords).
+        rays_q = rays_o[:, None, :] + rays_d * t_intersect[..., None]
+        # --------------------------------------------------------------------------------------
+
         # get rays from offsetted pt position
         rays_x = (rays_x - K[0, 2] + new_rays_xy[..., 0]) / K[0, 0]
         rays_y = -(rays_y - K[1, 2] + new_rays_xy[..., 1]) / K[1, 1]
@@ -195,7 +211,12 @@ class DSKnet(nn.Module):
             torch.ones_like(rays_x)
         ], dim=-1)
         rays_o = torch.sum(translation[..., None, :] * poses[:, None], dim=-1)
-        # rays_o = poses[..., None, :3, -1].expand_as(rays_d)
+
+        # DiffuserNeRF changes
+        # --------------------------------------------------------------------------------------
+        rays_o = rays_q * torch.ones_like(rays_o)
+        rays_d = rays_d - rays_o
+        # --------------------------------------------------------------------------------------
 
         align = new_rays_xy[:, 0, :].abs().mean()
         align += (delta_trans[:, 0, :].abs().mean() * 10)
@@ -424,6 +445,7 @@ class NeRFAll(nn.Module):
 
         """
         # training
+        diffuser_info = kwargs.pop("diffuser_info", {})
         if self.training:
             assert rays is not None, "Please specify rays when in the training mode"
 
@@ -436,7 +458,7 @@ class NeRFAll(nn.Module):
                         rays_info["ray_depth"] = depth[:, None]
 
                 # time0 = time.time()
-                new_rays, weight, align_loss = self.kernelsnet(H, W, K, rays, rays_info)
+                new_rays, weight, align_loss = self.kernelsnet(H, W, K, rays, rays_info, diffuser_info)
                 ray_num, pt_num = new_rays.shape[:2]
 
                 # time1 = time.time()

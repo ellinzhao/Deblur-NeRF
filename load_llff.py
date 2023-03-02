@@ -173,7 +173,7 @@ def recenter_poses(poses):
     poses = np.linalg.inv(c2w) @ poses
     poses_[:, :3, :4] = poses[:, :3, :4]
     poses = poses_
-    return poses
+    return poses, np.linalg.inv(c2w)
 
 
 #####################
@@ -253,7 +253,7 @@ def load_llff_data(args, basedir, factor=8, recenter=True, bd_factor=.75, spheri
     bds *= sc
 
     if recenter:
-        poses = recenter_poses(poses)
+        poses, w2c_train = recenter_poses(poses)
 
     # generate render_poses for video generation
     if spherify:
@@ -285,6 +285,10 @@ def load_llff_data(args, basedir, factor=8, recenter=True, bd_factor=.75, spheri
         # Generate poses for spiral path
         # rads = [0.7, 0.2, 0.7]
         render_poses = render_path_spiral(c2w_path, up, rads, focal, zdelta, zrate=.5, rots=N_rots, N=N_views)
+        
+        bottom = np.reshape([0, 0, 0, 1.], [1, 4])
+        c2w = np.concatenate([c2w[:3, :4], bottom], -2)
+        w2c_render = np.linalg.inv(c2w)
 
         if path_epi:
             #             zloc = np.percentile(tt, 10, 0)[2]
@@ -304,4 +308,4 @@ def load_llff_data(args, basedir, factor=8, recenter=True, bd_factor=.75, spheri
     np.save('/content/poses_render.npy', render_poses)
     np.save('/content/poses.npy', poses)
 
-    return images, poses, bds, render_poses, i_test
+    return images, poses, bds, render_poses, i_test, w2c_train, w2c_render

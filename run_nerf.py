@@ -202,10 +202,19 @@ def train():
 
     # Load data
     K = None
-    images, poses, bds, render_poses, i_test = load_llff_data(
+    images, poses, bds, render_poses, i_test, w2c_train, w2c_render = load_llff_data(
         args, args.datadir, args.factor, recenter=True, bd_factor=.75,
         spherify=args.spherify, path_epi=args.render_epi,
     )
+    n, p0 = np.array([0, 1, 0, 1]), np.array([0, -1, 0, 1])
+    diffuser_train = {
+        'n': torch.tensor(w2c_train @ n),
+        'p0': torch.tensor(w2c_train @ p0),
+    }
+    diffuser_render = {
+        'n': torch.tensor(w2c_render @ n),
+        'p0': torch.tensor(w2c_render @ p0),
+    }
     hwf = poses[0, :3, -1]
     poses = poses[:, :3, :4]
     print('Loaded llff', images.shape, render_poses.shape, hwf, args.datadir)
@@ -357,6 +366,7 @@ def train():
                 poses=torch.cat([render_poses, dummy_poses], dim=0),
                 render_kwargs=render_kwargs_test,
                 render_factor=args.render_factor,
+                diffuser_info=diffuser_render,
             )
             rgbshdr = rgbshdr[:len(rgbshdr) - dummy_num]
             disps = (1. - disps)
@@ -384,7 +394,8 @@ def train():
                         render_kwargs=render_kwargs_test,
                         render_factor=args.render_factor,
                         render_point=pti,
-                        images_indices=imgidx
+                        images_indices=imgidx,
+                        diffuser_info=diffuser_render,
                     )
                     rgbs = rgbs[:len(rgbs) - dummy_num]
                     weights = weights[:len(weights) - dummy_num]
@@ -480,7 +491,7 @@ def train():
         if i == args.kernel_start_iter:
             torch.cuda.empty_cache()
         rgb, rgb0, extra_loss = nerf(
-            H, W, K, chunk=args.chunk, rays=batch_rays, rays_info=iter_data,
+            H, W, K, chunk=args.chunk, rays=batch_rays, rays_info=iter_data, diffuser_info=diffuser_train,
             retraw=True, force_naive=i < args.kernel_start_iter, **render_kwargs_train,
         )
 
@@ -524,7 +535,7 @@ def train():
             # Turn on testing mode
             with torch.no_grad():
                 nerf.eval()
-                rgbs, disps = nerf(H, W, K, args.chunk, poses=render_poses, render_kwargs=render_kwargs_test)
+                rgbs, disps = nerf(H, W, K, args.chunk, poses=render_poses, render_kwargs=render_kwargs_test, diffuser_info=diffuser_render)
             print('Done, saving', rgbs.shape, disps.shape)
             moviebase = os.path.join(basedir, expname, f'{expname}_spiral_{i:06d}_')
             rgbs = (rgbs - rgbs.min()) / (rgbs.max() - rgbs.min())
@@ -546,7 +557,7 @@ def train():
                 rgbs, _ = nerf(
                     H, W, K, args.chunk,
                     poses=torch.cat([poses, dummy_poses], dim=0).cuda(),
-                    render_kwargs=render_kwargs_test,
+                    render_kwargs=render_kwargs_test, diffuser_info=diffuser_train,
                 )
                 rgbs = rgbs[:len(rgbs) - dummy_num]
                 rgbs_save = rgbs
