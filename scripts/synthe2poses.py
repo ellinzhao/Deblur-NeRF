@@ -17,6 +17,7 @@ def config_parser():
     import configargparse
     parser = configargparse.ArgumentParser()
     parser.add_argument('--data_path', type=str)
+    parser.add_argument('--save_path', type=str)
     parser.add_argument('--bd_min', type=float, default=0.1)
     parser.add_argument('--bd_max', type=float, default=10.)
     return parser
@@ -26,10 +27,11 @@ def main():
     parser = config_parser()
     args = parser.parse_args()
     data_path = args.data_path
-    input_path = os.path.join(data_path, 'images')
-    json_path  = os.path.join(data_path, 'transforms.json')
-    out_path   = os.path.join(data_path, 'images_1')
-    pose_out_path = os.path.join(data_path, 'poses_bounds.npy')
+    save_path = args.save_path
+    input_path = os.path.join(data_path, 'images_train')
+    json_path  = os.path.join(data_path, 'transforms_train.json')
+    out_path   = os.path.join(save_path, 'images_1')
+    pose_out_path = os.path.join(save_path, 'poses_bounds.npy')
     if not os.path.exists(out_path):
         os.makedirs(out_path, exist_ok=True)
 

@@ -143,6 +143,10 @@ def config_parser():
                         help='if true, optimize global 3D translation of each sampling point')
     parser.add_argument('--tone_mapping_type', type=str, default='none',
                         help='the tone mapping of linear to LDR color space, <none>, <gamma>, <learn>')
+    parser.add_argument('--freeze_start_iter', type=int, default=100,
+                        help='start iteration of the prior loss')
+    parser.add_argument('--freeze_end_iter', type=int, default=200,
+                        help='end iteration of the prior loss')
 
     ####### render option, will not effect training ########
     parser.add_argument('--render_only', action='store_true',
@@ -455,6 +459,24 @@ def train():
 
         # Optim loop ================================================================================
         nerf.train()
+        if i == args.freeze_start_iter:
+            for name, param in nerf.named_parameters():
+                if 'mlp_coarse' in name or 'mlp_fine' in name:
+                    param.requires_grad = False
+                else:
+                    param.requires_grad = True
+            nonfrozen = [p for p in nerf.parameters() if p.requires_grad]
+            if len(nonfrozen) == 0: print('DSK needs to be training') 
+            optimizer = torch.optim.Adam(params=nonfrozen, lr=args.lrate, betas=(0.9, 0.999))
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = new_lrate # new optim does not have updated lr
+        if i == args.freeze_end_iter:
+            newparams = []
+            for name, param in nerf.named_parameters():
+                if 'mlp_coarse' in name or 'mlp_fine' in name: 
+                    param.requires_grad = True
+                    newparams += [param]
+            optimizer.add_param_group({'params': newparams})
         if i == args.kernel_start_iter:
             torch.cuda.empty_cache()
         rgb, rgb0, extra_loss = nerf(
